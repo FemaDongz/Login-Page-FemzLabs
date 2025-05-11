@@ -1,0 +1,288 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=overlays-content">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Femz Labs - Login & Register</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./stylelogin.css">
+</head>
+<body>
+  <div class="notification" id="notification">
+    <span id="notification-text"></span>
+    <div class="loading-bar">
+      <div class="loading-bar-fill" id="loading-bar-fill"></div>
+    </div>
+  </div>
+  <div class="container" id="auth-container">
+    <div class="logo">Femz Labs</div>
+    <div id="login-form" class="form form-visible">
+      <div class="form-group">
+        <label for="login-username">Username</label>
+        <input type="text" id="login-username" placeholder="Enter your username or @IGusername" required>
+        <div id="login-username-error" class="error">Username must contain only letters, numbers, dots, or underscores, and be at least 5 characters if not an IG username.</div>
+        <div id="login-username-indicator" class="validation-indicator">
+          <span id="login-username-dot" class="dot"></span>
+          <span id="login-username-status"></span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="login-id">ID</label>
+        <input type="text" id="login-id" placeholder="Enter your ID" required>
+      </div>
+      <button onclick="handleLogin()">Login</button>
+      <div class="toggle">
+        Don't have an account? <a href="#" onclick="showRegister()">Register</a>
+      </div>
+      <a href="#" class="forgot-id" onclick="showForgotId()">Forgot ID or Username? Recover</a>
+    </div>
+    <div id="register-form" class="form form-hidden">
+      <div class="form-group">
+        <label for="register-username">Username</label>
+        <input type="text" id="register-username" placeholder="Enter your username or @IGusername" required>
+        <div id="register-username-error" class="error">Username must contain only letters, numbers, dots, or underscores, and be at least 5 characters if not an IG username.</div>
+        <div id="register-username-indicator" class="validation-indicator">
+          <span id="register-username-dot" class="dot"></span>
+          <span id="register-username-status"></span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="register-phone">Mobile Phone Number</label>
+        <input type="tel" id="register-phone" placeholder="Enter your WhatsApp number (e.g., +628123456789)" required>
+        <div id="register-phone-error" class="error">Please enter a valid phone number starting with + followed by country code (10-15 digits).</div>
+        <div id="register-phone-indicator" class="validation-indicator">
+          <span id="register-phone-dot" class="dot"></span>
+          <span id="register-phone-status"></span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="register-gmail">Gmail Address</label>
+        <input type="email" id="register-gmail" placeholder="Enter your Gmail address" required>
+        <div id="register-gmail-error" class="error">Please enter a valid Gmail address.</div>
+        <div id="register-gmail-indicator" class="validation-indicator">
+          <span id="register-gmail-dot" class="dot"></span>
+          <span id="register-gmail-status"></span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="register-password">Password</label>
+        <input type="password" id="register-password" placeholder="Enter your password" required>
+        <svg class="password-toggle" onclick="togglePassword('register-password', this)" viewBox="0 0 24 24">
+          <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+        </svg>
+        <div id="register-password-error" class="error">Password must be 8+ characters, with uppercase, lowercase, and numbers, no special characters.</div>
+        <div id="password-validation-list" class="validation-list">
+          <div><span id="password-length" class="dot"></span>At least 8 characters</div>
+          <div><span id="password-uppercase" class="dot"></span>Contains uppercase letter</div>
+          <div><span id="password-number" class="dot"></span>Contains number</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="register-confirm-password">Confirm Password</label>
+        <input type="password" id="register-confirm-password" placeholder="Confirm your password" required>
+        <svg class="password-toggle" onclick="togglePassword('register-confirm-password', this)" viewBox="0 0 24 24">
+          <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+        </svg>
+        <div id="register-confirm-password-error" class="error">Passwords do not match.</div>
+        <div id="confirm-validation-list" class="validation-list">
+          <div><span id="confirm-password-match" class="dot"></span>Passwords match</div>
+        </div>
+      </div>
+      <button onclick="handleRegister()">Register</button>
+      <div class="toggle">
+        Already have an account? <a href="#" onclick="showLogin()">Login</a>
+      </div>
+    </div>
+    <div id="verify-form" class="form form-hidden">
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">Initializing account for <span id="loading-username"></span>...</div>
+      </div>
+      <div id="verify-content" style="display: none;">
+        <div class="form-group">
+          <label for="verify-code">Verification Code</label>
+          <input type="text" id="verify-code" placeholder="Enter the 6-digit code" required>
+          <div class="timer" id="verify-timer">05:00</div>
+          <input type="hidden" id="csrf-token" value="">
+          <div id="verify-code-error" class="error">Invalid or expired code. Please try again.</div>
+        </div>
+        <button onclick="handleVerify()">Verify</button>
+        <div class="cooldown" id="cooldown-text"></div>
+        <div class="toggle">
+          <a href="#" onclick="resendCode()" id="resend-link">Resend Code</a> | 
+          <a href="#" onclick="showRegister()">Change Phone Number</a>
+        </div>
+      </div>
+      <div id="success-content" style="display: none;">
+        <p>Verification successful! Your account has been created.</p>
+        <div class="id-display">
+          <span>Your ID: </span>
+          <span id="user-id" style="filter: blur(4px); margin-left: 0.5rem;"></span>
+          <svg class="id-toggle" onclick="toggleIdVisibility()" viewBox="0 0 24 24">
+            <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+          </svg>
+        </div>
+        <button class="copy-button" id="copy-id-button" onclick="copyId()">Copy ID</button>
+        <div class="warning">
+          Warning: Your ID is sensitive. Do not share it publicly. Save it securely and only use it for login purposes. Violating this may lead to account suspension.
+        </div>
+        <button onclick="showLogin()">Proceed to Login</button>
+      </div>
+      <div class="toggle">
+        <a href="#" onclick="showRegister()">Back to Register</a>
+      </div>
+    </div>
+    <div id="forgot-id-form" class="form form-hidden">
+      <div class="form-header">Recover Your ID or Username</div>
+      <div id="forgot-id-input" style="display: block;">
+        <div class="form-group">
+          <label for="forgot-id-username">Username (if known)</label>
+          <input type="text" id="forgot-id-username" placeholder="Enter your username or @IGusername">
+          <div id="forgot-id-username-error" class="error">Username must contain only letters, numbers, dots, or underscores, and be at least 5 characters if not an IG username.</div>
+          <div id="forgot-id-username-indicator" class="validation-indicator">
+            <span id="forgot-id-username-dot" class="dot"></span>
+            <span id="forgot-id-username-status"></span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="forgot-id-phone">Mobile Phone Number</label>
+          <input type="tel" id="forgot-id-phone" placeholder="Enter your registered WhatsApp number" required>
+          <div id="forgot-id-phone-error" class="error">Please enter a valid phone number starting with + followed by country code (10-15 digits).</div>
+          <div id="forgot-id-phone-indicator" class="validation-indicator">
+            <span id="forgot-id-phone-dot" class="dot"></span>
+            <span id="forgot-id-phone-status"></span>
+          </div>
+        </div>
+        <button onclick="handleForgotId()">Recover ID</button>
+        <div class="toggle">
+          <a href="#" onclick="showForgotUsername()">Forgot Username? Recover via Gmail</a>
+        </div>
+      </div>
+      <div id="forgot-id-verify" style="display: none;">
+        <div class="form-group">
+          <label for="forgot-id-code">Recovery Code</label>
+          <input type="text" id="forgot-id-code" placeholder="Enter the 6-digit code" required>
+          <div class="timer" id="forgot-id-timer">05:00</div>
+          <input type="hidden" id="forgot-id-csrf-token" value="">
+          <div id="forgot-id-code-error" class="error">Invalid or expired code. Please try again.</div>
+        </div>
+        <button onclick="handleForgotIdVerify()">Verify</button>
+        <div class="cooldown" id="forgot-id-cooldown-text"></div>
+        <div class="toggle">
+          <a href="#" onclick="resendForgotIdCode()" id="forgot-id-resend-link">Resend Code</a>
+        </div>
+      </div>
+      <div id="forgot-id-success" style="display: none;">
+        <p>ID recovery successful!</p>
+        <div class="id-display">
+          <span>Your ID: </span>
+          <span id="forgot-id-user-id" style="filter: blur(4px); margin-left: 0.5rem;"></span>
+          <svg class="id-toggle" onclick="toggleForgotIdVisibility()" viewBox="0 0 24 24">
+            <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+          </svg>
+        </div>
+        <button class="copy-button" id="copy-forgot-id-button" onclick="copyForgotId()">Copy ID</button>
+        <div class="warning">
+          Warning: Your ID is sensitive. Do not share it publicly. Save it securely and only use it for login purposes.
+        </div>
+        <button onclick="showLogin()">Proceed to Login</button>
+      </div>
+      <div class="toggle">
+        <a href="#" onclick="showLogin()">Back to Login</a>
+      </div>
+    </div>
+    <div id="forgot-username-form" class="form form-hidden">
+      <div class="form-header">Recover Your Username</div>
+      <div id="forgot-username-input" style="display: block;">
+        <div class="form-group">
+          <label for="forgot-username-gmail">Gmail Address</label>
+          <input type="email" id="forgot-username-gmail" placeholder="Enter your registered Gmail address" required>
+          <div id="forgot-username-gmail-error" class="error">Please enter a valid Gmail address.</div>
+          <div id="forgot-username-gmail-indicator" class="validation-indicator">
+            <span id="forgot-username-gmail-dot" class="dot"></span>
+            <span id="forgot-username-gmail-status"></span>
+          </div>
+        </div>
+        <button onclick="handleForgotUsername()">Recover Username</button>
+      </div>
+      <div id="forgot-username-verify" style="display: none;">
+        <div class="form-group">
+          <label for="forgot-username-code">OTP Code</label>
+          <input type="text" id="forgot-username-code" placeholder="Enter the 6-digit OTP" required>
+          <div class="timer" id="forgot-username-timer">05:00</div>
+          <input type="hidden" id="forgot-username-csrf-token" value="">
+          <div id="forgot-username-code-error" class="error">Invalid or expired OTP. Please try again.</div>
+        </div>
+        <button onclick="handleForgotUsernameVerify()">Verify</button>
+        <div class="cooldown" id="forgot-username-cooldown-text"></div>
+        <div class="toggle">
+          <a href="#" onclick="resendForgotUsernameCode()" id="forgot-username-resend-link">Resend OTP</a>
+        </div>
+      </div>
+      <div id="forgot-username-success" style="display: none;">
+        <p>Username recovery successful!</p>
+        <div class="id-display">
+          <span>Your Username: </span>
+          <span id="forgot-username-result" style="filter: blur(4px); margin-left: 0.5rem;"></span>
+          <svg class="id-toggle" onclick="toggleForgotUsernameVisibility()" viewBox="0 0 24 24">
+            <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+          </svg>
+        </div>
+        <button class="copy-button" id="copy-forgot-username-button" onclick="copyForgotUsername()">Copy Username</button>
+        <div class="warning">
+          Warning: Your username is sensitive. Save it securely and use it for login purposes.
+        </div>
+        <button onclick="showLogin()">Proceed to Login</button>
+      </div>
+      <div class="toggle">
+        <a href="#" onclick="showForgotId()">Back to Recover ID</a> | 
+        <a href="#" onclick="showLogin()">Back to Login</a>
+      </div>
+    </div>
+  </div>
+  <footer class="footer" id="footer">© 2025 Femz Labs. All Rights Reserved.</footer>
+  <script src="./scriptlogin.js"></script>
+</body>
+</html>
